@@ -3,6 +3,7 @@ package net
 import (
 	"fmt"
 	"goinx/iface"
+	"goinx/utils"
 	"net"
 )
 
@@ -22,7 +23,8 @@ type Server struct {
 
 // Start 启动服务器
 func (s *Server) Start() {
-	fmt.Printf("[Start] Server Listen at IP:%s, Port %d, is starting\n", s.IP, s.Port)
+	fmt.Printf("[Goinx Start] Server Name: %s, Listen at IP:%s, Port %d, is starting\n", s.Name, s.IP, s.Port)
+	fmt.Printf("[Goinx] Version: %s, MaxConn: %d, MaxSize: %d\n", utils.GlobalObject.Version, utils.GlobalObject.MaxConn, utils.GlobalObject.MaxPackageSize)
 
 	// 防止阻塞 异步化
 	go func() {
@@ -86,10 +88,10 @@ func (s *Server) AddRouter(router iface.IRouter) {
 */
 func NewServer(name string) iface.IServer {
 	return &Server{
-		Name:      name,
+		Name:      utils.GlobalObject.Name,
 		IPVersion: "tcp4",
-		IP:        "0.0.0.0",
-		Port:      8999,
+		IP:        utils.GlobalObject.Host,
+		Port:      utils.GlobalObject.TcpPort,
 		Router:    nil,
 	}
 }
