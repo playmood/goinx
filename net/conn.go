@@ -3,6 +3,7 @@ package net
 import (
 	"fmt"
 	"goinx/iface"
+	"io"
 	"net"
 )
 
@@ -14,20 +15,20 @@ type Connection struct {
 	ConnID uint32
 	// 当前的连接状态
 	isClosed bool
-	// 当前连接绑定的业务处理方法
-	handleAPI iface.HandleFunc
 	// 告知当前连接已经退出的channel
 	ExitChan chan bool
+	// 改连接处理的方法Router
+	Router iface.IRouter
 }
 
 // NewConnection 初始化连接模块
-func NewConnection(conn *net.TCPConn, connID uint32, callback iface.HandleFunc) *Connection {
+func NewConnection(conn *net.TCPConn, connID uint32, router iface.IRouter) *Connection {
 	return &Connection{
-		Conn:      conn,
-		ConnID:    connID,
-		handleAPI: callback,
-		isClosed:  false,
-		ExitChan:  make(chan bool, 1),
+		Conn:     conn,
+		ConnID:   connID,
+		Router:   router,
+		isClosed: false,
+		ExitChan: make(chan bool, 1),
 	}
 }
 
@@ -39,16 +40,28 @@ func (c *Connection) StartReader() {
 	for {
 		// 读取客户端的数据到buf中，最大512字节
 		buf := make([]byte, 512)
-		cnt, err := c.Conn.Read(buf)
+		_, err := c.Conn.Read(buf)
 		if err != nil {
+			if err == io.EOF {
+				continue
+			}
 			fmt.Println("recv buf err", err)
 			continue
 		}
-		// 调用当前连接所绑定的HandleFunc
-		if err := c.handleAPI(c.Conn, buf, cnt); err != nil {
-			fmt.Println("connID ", c.ConnID, " hanle is error ", err)
-			break
+		// 得到当前conn数据的Request请求数据
+		req := Request{
+			conn: c,
+			data: buf,
 		}
+
+		// 执行注册的路由方法
+		go func(request iface.IRequest) {
+			// 从路由中，找到注册绑定的conn对应的router调用
+			c.Router.PreHandle(request)
+			c.Router.Handle(request)
+			c.Router.PostHandle(request)
+		}(&req)
+
 	}
 }
 
