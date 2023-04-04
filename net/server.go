@@ -1,6 +1,7 @@
 package net
 
 import (
+	"errors"
 	"fmt"
 	"goinx/iface"
 	"net"
@@ -16,6 +17,17 @@ type Server struct {
 	IP string
 	// 服务器监听的端口
 	Port int
+}
+
+// CallBackToClient 写死的handle 应该让用户自定义
+func CallBackToClient(conn *net.TCPConn, data []byte, cnt int) error {
+	// 回显业务
+	fmt.Println("[conn handle] CallBackToClient...")
+	if _, err := conn.Write(data[:cnt]); err != nil {
+		fmt.Println("write back buf err", err)
+		return errors.New("CallBackToClient error")
+	}
+	return nil
 }
 
 // Start 启动服务器
@@ -37,6 +49,7 @@ func (s *Server) Start() {
 			return
 		}
 		fmt.Println("start Goinx server success, ", s.Name, " listening...")
+		var cid uint32 = 0
 		// 3 阻塞的等待客户端进行连接， 处理客户端连接业务(读写)
 		for {
 			// 如果有客户端连接，阻塞会返回
@@ -45,24 +58,11 @@ func (s *Server) Start() {
 				fmt.Println("Accept err", err)
 				continue
 			}
+			// 将处理新连接的业务方法和conn进行绑定 得到连接模块
+			dealConn := NewConnection(conn, cid, CallBackToClient)
+			cid++
 
-			// 已经与客户端建立连接
-			go func() {
-				for {
-					buf := make([]byte, 512)
-					cnt, err := conn.Read(buf)
-					if err != nil {
-						fmt.Println("recv buf err", err)
-					}
-
-					fmt.Printf("recv client buf %s, cnt %d\n", buf, cnt)
-					// 回显功能
-					if _, err := conn.Write(buf[:cnt]); err != nil {
-						fmt.Println("write back buf err", err)
-						continue
-					}
-				}
-			}()
+			go dealConn.Start()
 		}
 	}()
 
