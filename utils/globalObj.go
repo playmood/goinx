@@ -39,7 +39,7 @@ func init() {
 	// 如果配置文件没加载，此为默认值
 	GlobalObject = &GlobalObj{
 		Name:           "GoinxServerApp",
-		Version:        "0.3",
+		Version:        "0.4",
 		TcpPort:        8999,
 		Host:           "0.0.0.0",
 		MaxConn:        1000,

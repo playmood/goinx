@@ -3,12 +3,12 @@ package main
 import (
 	"fmt"
 	"goinx/iface"
-	"goinx/net"
+	"goinx/gnet"
 )
 
 // PingRouter ping test
 type PingRouter struct {
-	net.BaseRouter
+	gnet.BaseRouter
 }
 
 // PreHandle test
@@ -39,7 +39,7 @@ func (this *PingRouter) PostHandle(request iface.IRequest) {
 }
 
 func main() {
-	s := net.NewServer("[goinx V0.2]")
+	s := gnet.NewServer("[goinx V0.2]")
 
 	// 给当前框架添加一个自定义的router
 	s.AddRouter(&PingRouter{})

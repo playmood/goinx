@@ -1,0 +1,6 @@
+{
+  "Name":"goinx v0.4 Server",
+  "Host":"0.0.0.0",
+  "TcpPort":8999,
+  "MaxConn":3
+}

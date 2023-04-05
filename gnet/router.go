@@ -1,4 +1,4 @@
-package net
+package gnet
 
 import "goinx/iface"
 

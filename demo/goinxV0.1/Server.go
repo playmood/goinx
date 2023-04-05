@@ -1,8 +1,8 @@
 package main
 
-import "goinx/net"
+import "goinx/gnet"
 
 func main() {
-	s := net.NewServer("[goinx V0.1]")
+	s := gnet.NewServer("[goinx V0.1]")
 	s.Serve()
 }
