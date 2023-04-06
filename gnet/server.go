@@ -19,6 +19,52 @@ type Server struct {
 	Port int
 	// 当前server的消息管理模块，统一管理Router
 	MsgHandler iface.IMsgHandle
+	// 该server的连接管理模块
+	ConnMgr iface.IConnManager
+	// 创建连接时自动调用的hook函数
+	OnConnStart func(iface.IConnection)
+	// 销毁连接时自动调用的hook函数
+	OnConnStop func(iface.IConnection)
+}
+
+/*
+	初始化Server模块
+*/
+func NewServer(name string) iface.IServer {
+	return &Server{
+		Name:       utils.GlobalObject.Name,
+		IPVersion:  "tcp4",
+		IP:         utils.GlobalObject.Host,
+		Port:       utils.GlobalObject.TcpPort,
+		MsgHandler: NewMsgHandle(),
+		ConnMgr:    NewConnManager(),
+	}
+}
+
+// SetOnConnStart 注册OnConnStart钩子函数的方法
+func (s *Server) SetOnConnStart(hookFunc func(connection iface.IConnection)) {
+	s.OnConnStart = hookFunc
+}
+
+// SetOnConnStop 注册OnConnStop钩子函数的方法
+func (s *Server) SetOnConnStop(hookFunc func(connection iface.IConnection)) {
+	s.OnConnStop = hookFunc
+}
+
+// CallOnConnStart 调用OnConnStart钩子函数的方法
+func (s *Server) CallOnConnStart(conn iface.IConnection) {
+	if s.OnConnStart != nil {
+		fmt.Println("----> call CallOnConnStart() ...")
+		s.OnConnStart(conn)
+	}
+}
+
+// CallOnConnStop 调用OnConnStop钩子函数的方法
+func (s *Server) CallOnConnStop(conn iface.IConnection) {
+	if s.OnConnStop != nil {
+		fmt.Println("----> call CallOnConnStop() ...")
+		s.OnConnStop(conn)
+	}
 }
 
 // Start 启动服务器
@@ -52,8 +98,17 @@ func (s *Server) Start() {
 				fmt.Println("Accept err", err)
 				continue
 			}
+
+			// 设置最大连接个数的判断，如果超过最大连接，那么则关闭此新的连接
+			if s.ConnMgr.Len() >= utils.GlobalObject.MaxConn {
+				// todo 给客户端响应一个超出最大连接的错误包
+				fmt.Println("======>> too many conn, Maxconn = ", utils.GlobalObject.MaxConn)
+				conn.Close()
+				continue
+			}
+
 			// 将处理新连接的业务方法和conn进行绑定 得到连接模块
-			dealConn := NewConnection(conn, cid, s.MsgHandler)
+			dealConn := NewConnection(s, conn, cid, s.MsgHandler)
 			cid++
 
 			// 对应连接的业务处理
@@ -65,8 +120,9 @@ func (s *Server) Start() {
 
 // Stop 停止服务器
 func (s *Server) Stop() {
-	// todo 将服务器的资源、状态或一些已经开启的连接信息进行回收
-
+	// 将服务器的资源、状态或一些已经开启的连接信息进行回收
+	fmt.Println("[stop] Goinx server name ", s.Name)
+	s.ConnMgr.ClearConn()
 }
 
 // Serve 运行服务器
@@ -85,15 +141,6 @@ func (s *Server) AddRouter(msgID uint32, router iface.IRouter) {
 	fmt.Println("add router success!")
 }
 
-/*
-	初始化Server模块
-*/
-func NewServer(name string) iface.IServer {
-	return &Server{
-		Name:       utils.GlobalObject.Name,
-		IPVersion:  "tcp4",
-		IP:         utils.GlobalObject.Host,
-		Port:       utils.GlobalObject.TcpPort,
-		MsgHandler: NewMsgHandle(),
-	}
+func (s *Server) GetConnMgr() iface.IConnManager {
+	return s.ConnMgr
 }

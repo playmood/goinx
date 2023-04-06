@@ -11,6 +11,8 @@ import (
 
 // Connection 连接模块
 type Connection struct {
+	// 当前Conn隶属于哪个Server
+	TcpServer iface.IServer
 	// 当前连接的socket TCP套接字
 	Conn *net.TCPConn
 	// 连接的id
@@ -26,8 +28,9 @@ type Connection struct {
 }
 
 // NewConnection 初始化连接模块
-func NewConnection(conn *net.TCPConn, connID uint32, handler iface.IMsgHandle) *Connection {
-	return &Connection{
+func NewConnection(server iface.IServer, conn *net.TCPConn, connID uint32, handler iface.IMsgHandle) *Connection {
+	c := &Connection{
+		TcpServer:  server,
 		Conn:       conn,
 		ConnID:     connID,
 		MsgHandler: handler,
@@ -35,6 +38,11 @@ func NewConnection(conn *net.TCPConn, connID uint32, handler iface.IMsgHandle) *
 		msgChan:    make(chan []byte),
 		ExitChan:   make(chan bool, 1),
 	}
+
+	// 将连接置入管理模块
+	c.TcpServer.GetConnMgr().Add(c)
+
+	return c
 }
 
 // StartWriter 写消息的goroutine
@@ -122,6 +130,9 @@ func (c *Connection) Start() {
 	// 启动从当前连接写数据的业务
 	go c.StartWriter()
 
+	// 按照开发者传入的创建连接之后需要调用的处理业务，执行对应的hook函数
+	c.TcpServer.CallOnConnStart(c)
+
 }
 
 // Stop 停止连接 结束当前连接的工作
@@ -134,11 +145,17 @@ func (c *Connection) Stop() {
 	}
 	c.isClosed = true
 
+	// 按照开发者传入的销毁连接之后需要调用的处理业务，执行对应的hook函数
+	c.TcpServer.CallOnConnStop(c)
+
 	// 关闭socket连接
 	c.Conn.Close()
 
 	// 告知Writer关闭
 	c.ExitChan <- true
+
+	// 将当前连接从connMgr摘除
+	c.TcpServer.GetConnMgr().Remove(c)
 
 	// 回收资源
 	close(c.ExitChan)
