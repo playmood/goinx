@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"goinx/iface"
+	"goinx/utils"
 	"io"
 	"net"
 )
@@ -59,7 +60,7 @@ func (c *Connection) StartWriter() {
 // StartReader 读消息的goroutine
 func (c *Connection) StartReader() {
 	fmt.Println("[Reader Goroutine is running...]")
-	defer fmt.Println("[conn Reader exit!] remote addr is ", c.RemoteAddr().String(), " connId = ", c.ConnID, )
+	defer fmt.Println("[conn Reader exit!] remote addr is ", c.RemoteAddr().String(), " connId = ", c.ConnID)
 	defer c.Stop()
 
 	for {
@@ -103,8 +104,13 @@ func (c *Connection) StartReader() {
 			msg:  msg,
 		}
 
-		// 根据绑定好的msg id 找到 对应的api router执行
-		go c.MsgHandler.DoMsgHandler(&req)
+		if utils.GlobalObject.WorkerPoolSize > 0 {
+			// 将消息发给工作池
+			c.MsgHandler.SendMsgToTaskQueue(&req)
+		} else {
+			// 根据绑定好的msg id 找到 对应的api router执行
+			go c.MsgHandler.DoMsgHandler(&req)
+		}
 	}
 }
 

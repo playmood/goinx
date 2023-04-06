@@ -17,6 +17,9 @@ type GlobalObj struct {
 	Version        string // goinx版本号
 	MaxConn        int    // 当前服务器主机允许的最大连接数
 	MaxPackageSize uint32 // 当前框架数据包最大值
+
+	WorkerPoolSize uint32 // 当前业务工作Worker池的Goroutine数量
+	MaxTaskSize    uint32 // 最大值
 }
 
 // 全局对象实例
@@ -39,11 +42,13 @@ func init() {
 	// 如果配置文件没加载，此为默认值
 	GlobalObject = &GlobalObj{
 		Name:           "GoinxServerApp",
-		Version:        "0.6",
+		Version:        "0.7",
 		TcpPort:        8999,
 		Host:           "0.0.0.0",
 		MaxConn:        1000,
 		MaxPackageSize: 4096,
+		WorkerPoolSize: 8,
+		MaxTaskSize:    1024,
 	}
 	// 尝试从conf/goinx.json中加载
 	GlobalObject.Reload()

@@ -28,6 +28,8 @@ func (s *Server) Start() {
 
 	// 防止阻塞 异步化
 	go func() {
+		// 开启消息队列和worker工作池
+		s.MsgHandler.StartWorkerPool()
 		// 1 获取TCP的Addr
 		addr, err := net.ResolveTCPAddr(s.IPVersion, fmt.Sprintf("%s:%d", s.IP, s.Port))
 		if err != nil {
