@@ -7,6 +7,7 @@ import (
 	"goinx/utils"
 	"io"
 	"net"
+	"sync"
 )
 
 // Connection 连接模块
@@ -25,6 +26,10 @@ type Connection struct {
 	ExitChan chan bool
 	// 统一管理router
 	MsgHandler iface.IMsgHandle
+	// 连接属性集合
+	property map[string]interface{}
+	// 保护连接属性的锁
+	propertyLock sync.RWMutex
 }
 
 // NewConnection 初始化连接模块
@@ -37,6 +42,7 @@ func NewConnection(server iface.IServer, conn *net.TCPConn, connID uint32, handl
 		isClosed:   false,
 		msgChan:    make(chan []byte),
 		ExitChan:   make(chan bool, 1),
+		property: make(map[string]interface{}),
 	}
 
 	// 将连接置入管理模块
@@ -193,4 +199,32 @@ func (c *Connection) SendMsg(msgId uint32, data []byte) error {
 	c.msgChan <- binMsg
 
 	return nil
+}
+
+// SetProperty 设置连接属性
+func (c *Connection) SetProperty(key string, value interface{}) {
+	c.propertyLock.Lock()
+	defer c.propertyLock.Unlock()
+
+	c.property[key] = value
+}
+
+// GetProperty 获取连接属性
+func (c *Connection) GetProperty(key string) (interface{}, error) {
+	c.propertyLock.RLock()
+	defer c.propertyLock.RUnlock()
+
+	if value, ok := c.property[key]; ok {
+		return value, nil
+	} else {
+		return nil, errors.New("key not found")
+	}
+}
+
+// RemoveProperty 移除连接属性
+func (c *Connection) RemoveProperty(key string) {
+	c.propertyLock.Lock()
+	defer c.propertyLock.Unlock()
+
+	delete(c.property, key)
 }
