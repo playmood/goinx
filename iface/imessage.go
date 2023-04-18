@@ -1,6 +1,6 @@
 package iface
 
-// 将请求的消息封装到一个message中，定义抽象的接口
+// IMessage 将请求的消息封装到一个message中，定义抽象的接口
 type IMessage interface {
 	GetMsgId() uint32  // 获取消息的Id
 	GetMsgLen() uint32 // 获取消息长度
